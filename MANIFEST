@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/PGPLOT-Device.t
+lib/PGPLOT/Device.pm
