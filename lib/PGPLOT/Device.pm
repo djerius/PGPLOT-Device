@@ -12,7 +12,7 @@ our $VERSION = '0.01';
 
 
 our %Default = (
-		device => '/xs',
+		device => 'xs',
 	       );
 
 our $interactive = qr{^(?:xs|xw)$};
@@ -39,7 +39,7 @@ sub _initialize
 
   my ( $self, $spec ) = @_;
 
-  my %spec = $self->parse_spec($spec);
+  my %spec = defined $spec ? $self->parse_spec($spec) : ();
 
   # don't allow an override to change the device
   delete $spec{device} if defined $self->{device};
@@ -82,6 +82,7 @@ sub devn
   my $self = shift;
   my $old = $self->{devn};
   $self->{devn} = shift if @_;
+
   $old;
 }
 
@@ -312,7 +313,7 @@ filename are interpolated, and the result is returned.
 Currently, the C</xs> and C</xw> devices are recognized as being
 interactive.  PGPLOT allows more than one such window to be displayed;
 this is accomplished by preceding the device name with an integer id,
-e.g. C<2/xs>.  If a program generates several indpendent plots, it can
+e.g. C<2/xs>.  If a program generates several independent plots, it can
 either prompt between overwriting plots in a single window, or it may
 choose to use multiple plotting windows.  This module assists in the
 latter case by implementing auto-increment of the window id.  The
