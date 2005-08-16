@@ -30,6 +30,11 @@ sub new
   bless $self, $class;
 
   $self->_initialize(@_);
+
+  # need to keep track of whether there was an initial prefix
+  $self->{init_prefix} = defined $self->{prefix};
+
+  $self;
 }
 
 
@@ -43,6 +48,9 @@ sub _initialize
 
   # don't allow an override to change the device
   delete $spec{device} if defined $self->{device};
+
+  # don't allow an override to change an initial prefix
+  delete $spec{prefix} if $self->{init_prefix};
 
   # fill the object
   $self->{$_} = $spec{$_} for keys %spec;
@@ -141,7 +149,7 @@ sub parse_spec
 
   # only defined keys get through. makes it easier to override
   # things
-  delete $spec{$_} for grep { ! defined $spec{$_} } keys %spec;
+  delete $spec{$_} for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
 
   %spec;
 }
@@ -323,8 +331,15 @@ integer indicating the initial window id.
 =head2 Hardcopy devices
 
 Hardcopy device specifications (i.e. not C</xs> or C</xw>) are
-specified as C<filename/device>.  The filename will automatically be
-given the extension appropriate to the output file format.
+specified as C<filename/device>.  The filename is optional, and will
+automatically be given the extension appropriate to the output file
+format.  If a filename is specified in the specification passed to the
+B<new> method, it cannot be overridden.  This allows the user to
+specify a single output file for all hardcopy plots.  This works well
+for PostScript, which can handle multiple pages per file, but for the
+PNG device, this results in multiple output files with numbered
+suffices.  It's not pretty!  This module needs to be extended so it
+knows if a single output file can handle more than one page.
 
 Variables may be interpolated into the filenames using the
 C<${variable}> syntax (curly brackets are required).  Note that only
@@ -336,6 +351,7 @@ into the class constructor.
 
 The  internal counter which tracks the number of times the device object has
 been used is available as C<${devn}>.
+
 
 =head2 Methods
 
@@ -474,11 +490,11 @@ interpolate any variables or device numbers.
 
 =item would_change
 
-  if ( $dev->has_const ) { ... }
+  if ( $dev->would_change ) { ... }
 
 This method returns true if the last generated device specification
 would differ from one generated with the current environment. It
-returns true if no device specifcation has yet been generated.
+returns true if no device specification has yet been generated.
 
 It does not change the current environment.
 

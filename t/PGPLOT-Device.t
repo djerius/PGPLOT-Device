@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 16;
+use Test::More tests => 18;
 BEGIN { use_ok('PGPLOT::Device') };
 
 #########################
@@ -17,13 +17,13 @@ BEGIN { use_ok('PGPLOT::Device') };
 # empty prefix, interactive device
 {
   my $dev = PGPLOT::Device->new( '/xs' );
-  ok ( "/xs" eq $dev->next, "/inter" );
+  is ( $dev->next, "/xs", "/inter" );
 }
 
 # autoincrement empty prefix, interactive device
 {
   my $dev = PGPLOT::Device->new( '+/xs' );
-  ok ( "1/xs" eq $dev->next, "+/inter" );
+  is ( $dev->next, "1/xs", "+/inter" );
 }
 
 # fixed specific dev value
@@ -52,7 +52,7 @@ BEGIN { use_ok('PGPLOT::Device') };
 
   my $dev = PGPLOT::Device->new( 'try_${devn}_${theta:%0.2f}_${phi:%02d}/png' );
 
-  ok ( "try_1_3.00_04.png/png" eq $dev->next, 'global interpolation' );
+  is( $dev->next, "try_1_3.00_04.png/png", 'global interpolation' );
 }
 
 # interpolate with passed hash
@@ -65,7 +65,7 @@ BEGIN { use_ok('PGPLOT::Device') };
 
   $vars{phi} = 4;
 
-  ok ( "try_1_3.00_04.png/png" eq $dev->next, 'hash interpolation' );
+  is( $dev->next, "try_1_3.00_04.png/png", 'hash interpolation' );
 }
 
 # true const value 
@@ -102,13 +102,24 @@ BEGIN { use_ok('PGPLOT::Device') };
   my $dev = PGPLOT::Device->new( '/xs' );
 
   $dev->override( "foo.ps" );
-  ok( '/xs' eq $dev->next, "override interactive" );
+  is( $dev->next, '/xs', "override interactive" );
 }
 
-# can override a non-interactive device
+# can override a non-interactive device if no initial prefix
+{
+  my $dev = PGPLOT::Device->new( '/ps' );
+
+  $dev->override( "boo" );
+  is( $dev->next, 'boo.ps/ps', "override non-interactive no prefix" );
+}
+
+# cannot override a non-interactive device if an initial prefix
 {
   my $dev = PGPLOT::Device->new( 'foo/ps' );
 
   $dev->override( "boo" );
-  ok( 'boo.ps/ps' eq $dev->next, "override non-interactive" );
+  is(  $dev->next, 'foo.ps/ps', "non-interactive w/ init prefix: can't override" );
+
+  ok( ! $dev->would_change, "non-interactive w/ init prefix: wouldn't change" );
+
 }
