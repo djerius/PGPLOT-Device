@@ -10,7 +10,7 @@ use Text::Abbrev;
 
 our @ISA = qw();
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 our %Default = (
