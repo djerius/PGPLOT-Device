@@ -6,8 +6,6 @@ use warnings;
 
 use Carp;
 
-use Text::Abbrev;
-
 our @ISA = qw();
 
 our $VERSION = '0.03';
@@ -49,7 +47,8 @@ sub class_init
     push @devices, lc $type;
   }
 
-  abbrev( \%DevMap, @devices );
+  require Text::Abbrev;
+  Text::Abbrev::abbrev( \%DevMap, @devices );
 }
 
 sub new
