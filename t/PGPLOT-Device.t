@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 18;
+use Test::More tests => 19;
 BEGIN { use_ok('PGPLOT::Device') };
 
 #########################
@@ -121,5 +121,13 @@ BEGIN { use_ok('PGPLOT::Device') };
   is(  $dev->next, 'foo.ps/ps', "non-interactive w/ init prefix: can't override" );
 
   ok( ! $dev->would_change, "non-interactive w/ init prefix: wouldn't change" );
+}
 
+
+# allow overrides with multi-component paths
+{
+  my $dev = PGPLOT::Device->new( '/cps' );
+
+  $dev->override( "boo/foo" );
+  is(  $dev->next, 'boo/foo.ps/cps', "multi-component path" );
 }
