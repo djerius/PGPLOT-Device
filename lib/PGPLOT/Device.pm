@@ -168,14 +168,9 @@ sub parse_spec
     }
   }
 
-  if ( defined $device )
-  {
-    $device = lc($device);
-    $spec{devinfo} = $PGDevice{$DevMap{$device}};
-  }
-
   # if device isn't defined, use the existing one for the object
-  $spec{device} = defined $device && '' ne $device ? $device : $self->{device};
+  $spec{device} = defined $device ? lc($device) : $self->{device};
+  $spec{devinfo} = $PGDevice{$DevMap{$spec{device}}};
   $spec{prefix} = $prefix;
 
   if ( $prefix )

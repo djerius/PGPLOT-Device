@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 19;
+use Test::More tests => 21;
 BEGIN { use_ok('PGPLOT::Device') };
 
 #########################
@@ -130,4 +130,15 @@ BEGIN { use_ok('PGPLOT::Device') };
 
   $dev->override( "boo/foo" );
   is(  $dev->next, 'boo/foo.ps/cps', "multi-component path" );
+}
+
+# check that overrides don't mess up devinfo (bug fix)
+{
+  my $dev = PGPLOT::Device->new( '/cps' );
+
+  # testing ask is (currently) a good way of doing things
+  ok( defined $dev->ask, "devinfo initial" );
+
+  $dev->override( "boo/foo" );
+  ok( defined $dev->ask, "devinfo after override" );
 }
