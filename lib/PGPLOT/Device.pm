@@ -6,6 +6,8 @@ use warnings;
 
 use Carp;
 
+use Text::Abbrev;
+
 our @ISA = qw();
 
 our $VERSION = '0.02';
@@ -15,14 +17,46 @@ our %Default = (
 		device => 'xs',
 	       );
 
-our $interactive = qr{^(?:xs|xw)$};
 our $ephemeral = qr{^xw$};
+our $NDevices;
+our %PGDevice;
+our %DevMap;
 
-# Preloaded methods go here.
+
+sub class_init
+{
+  return if $NDevices;
+
+  require PGPLOT;
+  PGPLOT::pgqndt( $NDevices );
+
+  my @devices;
+
+  for my $didx ( 1..$NDevices )
+  {
+    my ( $type, $tlen, $descr, $dlen, $inter );
+    PGPLOT::pgqdt( $didx, $type, $tlen, $descr, $dlen, $inter );
+    $type =~ s{/}{};
+    $PGDevice{lc $type} =
+      { idx => $didx,
+	type => lc($type),
+	tlen => $tlen,
+	descr => $descr,
+	dlen => $dlen,
+	inter => $inter,
+      };
+
+    push @devices, lc $type;
+  }
+
+  abbrev( \%DevMap, @devices );
+}
 
 sub new
 {
   my $class = shift;
+
+  class_init();
 
   my $self = { devn => 1, 
 	       last => undef,
@@ -101,13 +135,45 @@ sub parse_spec
 {
   my ( $self, $spec ) = @_;
   my ( $prefix, $device );
+  my %spec;
 
-  # split into prefix and /device.  set to prefix only if no match,
+
+  # split into prefix and /device.  set to prefix only, if no match,
   # as that'll be the case if no device was specified.
   $prefix = $spec
     if 0 == ( ( $prefix, $device ) = $spec =~ m{(.*)/([^/]+)$} );
 
-  my %spec;
+
+  # be careful that a multi-directory path (dir/prefix) doesn't get
+  # translated into file/device.  If /prefix looks like a real PGPLOT
+  # device, this will fail horribly.
+
+  # if there's already a device, discard /device if it looks like
+  # a PGPLOT device, else append it to prefix.
+
+  # if there's not already a device, /device had better look like
+  # a PGPLOT device.
+
+  if ( defined $device && ! exists $DevMap{lc $device} )
+  {
+    if ( defined $self->{device} )
+    {
+      $prefix .= '/' . $device;
+      undef $device;
+    }
+
+    # no pre-existing device.  make sure that the device is a real one
+    else
+    {
+      croak( "unknown PGPLOT device: $device\n" );
+    }
+  }
+
+  if ( defined $device )
+  {
+    $device = lc($device);
+    $spec{devinfo} = $PGDevice{$DevMap{$device}};
+  }
 
   # if device isn't defined, use the existing one for the object
   $spec{device} = defined $device && '' ne $device ? $device : $self->{device};
@@ -127,7 +193,7 @@ sub parse_spec
 
     elsif ( defined $spec{device} )
     {
-      if ( $spec{device} !~ /$interactive/ )
+      if ( ! $spec{devinfo}{inter} )
       {
 	my $ext = ($spec{device} =~ m{^v?c?(ps)$}i) ?
 	                   ".$1" : '.' . $spec{device};
@@ -149,7 +215,8 @@ sub parse_spec
 
   # only defined keys get through. makes it easier to override
   # things
-  delete $spec{$_} for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
+  delete $spec{$_}
+    for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
 
   %spec;
 }
@@ -201,7 +268,7 @@ sub is_interactive
 {
   my $self = shift;
 
-  $self->{device} =~ /$interactive/;
+  $self->{devinfo}{inter};
 }
 
 sub is_ephemeral
