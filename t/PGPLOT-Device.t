@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 21;
+use Test::More tests => 22;
 BEGIN { use_ok('PGPLOT::Device') };
 
 #########################
@@ -141,4 +141,11 @@ BEGIN { use_ok('PGPLOT::Device') };
 
   $dev->override( "boo/foo" );
   ok( defined $dev->ask, "devinfo after override" );
+}
+
+
+# ensure that information for default device is fully populated
+{
+  my $dev = PGPLOT::Device->new( );
+  ok( $dev->is_interactive, "default device devinfo" );
 }

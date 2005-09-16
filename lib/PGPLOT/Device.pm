@@ -88,8 +88,11 @@ sub _initialize
   # fill the object
   $self->{$_} = $spec{$_} for keys %spec;
 
-  $self->{device} = $Default{device}
-    unless defined $self->{device};
+  unless ( defined $self->{device} )
+  {
+    $self->{device} = $Default{device};
+    $self->{devinfo} = $PGDevice{$DevMap{$Default{device}}};
+  }
 
   if ( exists $opts->{vars} )
   {
