@@ -7,7 +7,7 @@ use Carp;
 
 our @ISA = qw();
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 use PGPLOT::Device;
@@ -41,7 +41,7 @@ sub next
 {
   my $self = shift;
 
-  $self->override( shift ) if @_;
+  $self->override( @_ ) if @_;
 
   # prompt user before displaying second and subsequent plots if
   # a new plot will erase the previous one
