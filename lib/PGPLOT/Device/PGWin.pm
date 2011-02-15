@@ -22,7 +22,7 @@ sub new
 	      defined $opt ? %$opt : () );
 
   my $self = {};
-  $self->{device} = 
+  $self->{device} =
     PGPLOT::Device->new(
 			defined $opt{Device}  ? $opt{Device}  : (),
 			defined $opt{DevOpts} ? $opt{DevOpts} : (),
@@ -52,7 +52,7 @@ sub next
   if ( $self->{device}->would_change )
   {
     $self->{win}->close if defined $self->{win};
-    $self->{win} = 
+    $self->{win} =
       PDL::Graphics::PGPLOT::Window->new({ Device => $self->{device}->next,
 					   %{$self->{WinOpts}} } );
   }
@@ -212,6 +212,3 @@ may find a copy at L<http://www.fsf.org/copyleft/gpl.html>
 
 
 =cut
-
-
-
