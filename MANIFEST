@@ -1,8 +1,0 @@
-Changes
-lib/PGPLOT/Device.pm
-lib/PGPLOT/Device/PGWin.pm
-Makefile.PL
-MANIFEST
-README
-t/PGPLOT-Device.t
-META.yml                                 Module meta-data (added by MakeMaker)
