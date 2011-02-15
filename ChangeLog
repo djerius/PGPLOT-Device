@@ -1,0 +1,89 @@
+2011-02-15 22:05 +0000  convert-repo  <convert-repo>  (2d2315ebdf52 [tip])
+
+	* .hgtags: new file.
+	* .hgtags:
+	update tags
+
+2005-10-27 21:02 -0400  dj  <dj>  (cb6e1e7864ef [V0_06])
+
+	* lib/PGPLOT/Device.pm, lib/PGPLOT/Device/PGWin.pm:
+	PGWin::next wasn't passing all of its arguments to override
+
+2005-09-16 12:19 -0400  dj  <dj>  (fbbc3bacdd0e [V0_05])
+
+	* MANIFEST, lib/PGPLOT/Device.pm:
+	bumped version
+
+2005-09-16 12:17 -0400  dj  <dj>  (1fb8b0ac8ff1)
+
+	* lib/PGPLOT/Device.pm, t/PGPLOT-Device.t:
+	device info was not correctly initialized if the default device was
+	used
+
+2005-08-31 14:24 -0400  dj  <dj>  (24de34c0b6c8 [V0_04])
+
+	* lib/PGPLOT/Device.pm:
+	bumped version
+
+2005-08-31 14:22 -0400  dj  <dj>  (3b027be280c8)
+
+	* lib/PGPLOT/Device.pm, t/PGPLOT-Device.t:
+	overrides were undefing devinfo
+
+2005-08-31 13:31 -0400  dj  <dj>  (f7023d08509b [V0_03])
+
+	* lib/PGPLOT/Device.pm:
+	small optimization
+
+2005-08-31 13:29 -0400  dj  <dj>  (e9a1590609f7)
+
+	* lib/PGPLOT/Device.pm:
+	bumped version
+
+2005-08-31 13:29 -0400  dj  <dj>  (da5526e3b3be)
+
+	* t/PGPLOT-Device.t:
+	new test for multi-component paths
+
+2005-08-31 13:28 -0400  dj  <dj>  (354462f38cc8)
+
+	* lib/PGPLOT/Device.pm:
+	now uses PGPLOT to get list of devices and whether they are
+	interactive.
+
+	overriding with a multi-component path would result in the last
+	component being treated as a device name.
+
+2005-08-16 19:01 -0400  dj  <dj>  (81df9410bf6e [V0_02])
+
+	* lib/PGPLOT/Device.pm, t/PGPLOT-Device.t:
+	tweak code to prevent overriding of initial prefix
+
+2005-08-16 17:19 -0400  dj  <dj>  (869169c44704)
+
+	* lib/PGPLOT/Device.pm:
+	bumped version
+
+2005-08-16 17:19 -0400  dj  <dj>  (633687420afe)
+
+	* lib/PGPLOT/Device/PGWin.pm: new file.
+	* lib/PGPLOT/Device/PGWin.pm:
+	added PGWin class
+
+2005-08-16 17:18 -0400  dj  <dj>  (d548f04fd1a0)
+
+	* lib/PGPLOT/Device.pm:
+	minor fixes if no device was specified
+
+2005-08-04 12:00 -0400  dj  <dj>  (704975064b5e [V0_01] <initial>)
+
+	* 
+
+2005-08-04 12:00 -0400  dj  <dj>  (1a8f760a10e6)
+
+	* Changes, GNUmakefile.local, MANIFEST, Makefile.PL, README,
+	lib/PGPLOT/Device.pm, t/PGPLOT-Device.t: new file.
+	* Changes, GNUmakefile.local, MANIFEST, Makefile.PL, README,
+	lib/PGPLOT/Device.pm, t/PGPLOT-Device.t:
+	Initial revision
+
