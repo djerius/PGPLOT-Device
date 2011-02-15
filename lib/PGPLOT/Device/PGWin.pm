@@ -12,6 +12,7 @@ our $VERSION = '0.02';
 
 use PGPLOT::Device;
 use PGPLOT qw/ pgask /;
+use PDL::Graphics::PGPLOT::Window;
 
 sub new
 {
