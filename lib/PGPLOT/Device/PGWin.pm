@@ -7,7 +7,7 @@ use Carp;
 
 our @ISA = qw();
 
-our $VERSION = '0.02';
+our $VERSION = '0.07';
 
 
 use PGPLOT::Device;
