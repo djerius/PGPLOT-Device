@@ -290,7 +290,7 @@ sub _stringify
   my $pkg = (caller(1))[0];
   1 while
     $prefix =~ 
-      s/ \${ (\w+) (?::([^\}]+))? } /
+      s/ \$\{ (\w+) (?::([^\}]+))? } /
 	$fmt = defined $2 ? $2 : '%s';
 
         $val =
