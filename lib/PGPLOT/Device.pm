@@ -1,19 +1,16 @@
 package PGPLOT::Device;
 
-use 5.008002;
+# ABSTRACT: autogenerate PGPLOT device names
+
 use strict;
 use warnings;
-
-use Carp;
-
-our @ISA = qw();
 
 our $VERSION = '0.08';
 
 
 our %Default = (
-		device => 'xs',
-	       );
+                device => 'xs',
+               );
 
 our $ephemeral = qr{^xw$};
 our $NDevices;
@@ -21,407 +18,7 @@ our %PGDevice;
 our %DevMap;
 
 
-sub class_init
-{
-  return if $NDevices;
-
-  require PGPLOT;
-  PGPLOT::pgqndt( $NDevices );
-
-  my @devices;
-
-  for my $didx ( 1..$NDevices )
-  {
-    my ( $type, $tlen, $descr, $dlen, $inter );
-    PGPLOT::pgqdt( $didx, $type, $tlen, $descr, $dlen, $inter );
-    $type =~ s{/}{};
-    $PGDevice{lc $type} =
-      { idx => $didx,
-	type => lc($type),
-	tlen => $tlen,
-	descr => $descr,
-	dlen => $dlen,
-	inter => $inter,
-      };
-
-    push @devices, lc $type;
-  }
-
-  require Text::Abbrev;
-  Text::Abbrev::abbrev( \%DevMap, @devices );
-}
-
-sub new
-{
-  my $class = shift;
-
-  class_init();
-
-  my $self = { devn => 1, 
-	       last => undef,
-	       vars => {} };
-  bless $self, $class;
-
-  $self->_initialize(@_);
-
-  # need to keep track of whether there was an initial prefix
-  $self->{init_prefix} = defined $self->{prefix};
-
-  $self;
-}
-
-
-sub _initialize
-{
-  my $opts = 'HASH' eq ref $_[-1] ? pop @_ : {};
-
-  my ( $self, $spec ) = @_;
-
-  my %spec = defined $spec ? $self->parse_spec($spec) : ();
-
-  # don't allow an override to change the device
-  delete $spec{device} if defined $self->{device};
-
-  # don't allow an override to change an initial prefix
-  delete $spec{prefix} if $self->{init_prefix};
-
-  # fill the object
-  $self->{$_} = $spec{$_} for keys %spec;
-
-  unless ( defined $self->{device} )
-  {
-    $self->{device} = $Default{device};
-    $self->{devinfo} = $PGDevice{$DevMap{$Default{device}}};
-  }
-
-  if ( exists $opts->{vars} )
-  {
-    croak( "vars attribute must be a hash\n" )
-      unless 'HASH' eq ref $opts->{vars};
-
-    $self->{vars} = $opts->{vars};
-  }
-
-
-  $self->{ask} = $self->is_interactive && $self->is_const;
-
-
-  $self;
-}
-
-sub override
-{
-  my $self = shift;
-
-  if ( ! $self->is_interactive() )
-  {
-    $self->_initialize(@_);
-  }
-
-  $self;
-}
-
-sub devn
-{
-  my $self = shift;
-  my $old = $self->{devn};
-  $self->{devn} = shift if @_;
-
-  $old;
-}
-
-sub ask { $_[0]->{ask} };
-
-
-sub parse_spec
-{
-  my ( $self, $spec ) = @_;
-  my ( $prefix, $device );
-  my %spec;
-
-
-  # split into prefix and /device.  set to prefix only, if no match,
-  # as that'll be the case if no device was specified.
-  $prefix = $spec
-    if 0 == ( ( $prefix, $device ) = $spec =~ m{(.*)/([^/]+)$} );
-
-
-  # be careful that a multi-directory path (dir/prefix) doesn't get
-  # translated into file/device.  If /prefix looks like a real PGPLOT
-  # device, this will fail horribly.
-
-  # if there's already a device, discard /device if it looks like
-  # a PGPLOT device, else append it to prefix.
-
-  # if there's not already a device, /device had better look like
-  # a PGPLOT device.
-
-  if ( defined $device && ! exists $DevMap{lc $device} )
-  {
-    if ( defined $self->{device} )
-    {
-      $prefix .= '/' . $device;
-      undef $device;
-    }
-
-    # no pre-existing device.  make sure that the device is a real one
-    else
-    {
-      croak( "unknown PGPLOT device: $device\n" );
-    }
-  }
-
-  # if device isn't defined, use the existing one for the object
-  $spec{device} = defined $device ? lc($device) : $self->{device};
-  $spec{devinfo} = $PGDevice{$DevMap{$spec{device}}};
-  $spec{prefix} = $prefix;
-
-  if ( $prefix )
-  {
-    # numeric (possibly autoincrement)
-    if ( $prefix =~ /^([+])?(\d+)?$/ )
-    {
-      $spec{devn}  = defined $2 ? $2 : 1;
-
-      # if +, autoincrement device number
-      # we use interpolation to handle this case
-      $spec{prefix} = defined $1 ? '${devn}' : $2;
-    }
-
-    elsif ( defined $spec{device} )
-    {
-      if ( ! $spec{devinfo}{inter} )
-      {
-	my $ext = ($spec{device} =~ m{^v?c?(ps)$}i) ?
-	                   ".$1" : '.' . $spec{device};
-
-	# make sure the appropriate suffix is in there
-	$prefix =~ s/${ext}$//;
-	$prefix .= $ext;
-	$spec{prefix} = $prefix;
-      }
-
-      # we've got a situation here. an interactive device with a nonparseable
-      # prefix.  better bail
-      else
-      {
-	croak( "error: interactive device with unparseable prefix: $spec\n" );
-      }
-    }
-  }
-
-  # only defined keys get through. makes it easier to override
-  # things
-  delete $spec{$_}
-    for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
-
-  %spec;
-}
-
-sub next
-{
-  my $self = shift;
-
-  $self->{last} = $self->_stringify;
-  $self->{devn}++;
-  $self->{last};
-}
-
-sub current
-{
-  my $self = shift;
-
-  $self->_stringify;
-}
-
-sub last
-{
-  my $self = shift;
-  $self->{last};
-}
-
-sub _compare
-{
-  my ( $self, $other, $reverse ) = @_;
-
-  $reverse ?  $other cmp $self->_stringify :  $self->_stringify cmp $other;
-}
-
-sub is_const
-{
-  my $self = shift;
-  defined $self->{prefix} ? 
-    ($self->_stringify eq $self->{prefix} . '/' . $self->{device}) : 1;
-}
-
-sub would_change
-{
-  my $self = shift;
-
-  return defined $self->{last} ? $self->_stringify ne $self->{last} : 1;
-}
-
-sub is_interactive
-{
-  my $self = shift;
-
-  $self->{devinfo}{inter};
-}
-
-sub is_ephemeral
-{
-  my $self = shift;
-  $self->{device} =~ /$ephemeral/;
-}
-
-
-sub _stringify
-{
-  my $self = shift;
-
-  # handle interpolated values
-  my $prefix = defined $self->{prefix} ? $self->{prefix} : '';
-
-  # get calling package
-
-  my ( $fmt, $val );
-
-  no strict 'refs';
-  my $pkg = (caller(1))[0];
-  1 while
-    $prefix =~ 
-      s/ \$\{ (\w+) (?::([^\}]+))? } /
-	$fmt = defined $2 ? $2 : '%s';
-
-        $val =
-
-        # special: device id
-           $1 eq 'devn' ? $self->{devn} :
-
-        # part of the user passed set of variables?
-           exists $self->{vars}{$1} ?
-
-	# dereference it if it's a scalar ref, else use it directly
-	( 'SCALAR' eq ref $self->{vars}{$1} ? 
-	  ${$self->{vars}{$1}} : $self->{vars}{$1} ) :
-
-	# is it in the parent package?
-	  defined ${*{"${pkg}::$1"}{SCALAR}} ? ${*{"${pkg}::$1"}{SCALAR}} :
-
-	# nothing
-	  undef;
-
-        sprintf( $fmt, $val ) if defined $val;
-  /ex;
-
-  $prefix . '/' . $self->{device};
-}
-
-1;
-__END__
-
-=head1 NAME
-
-PGPLOT::Device - autogenerate PGPLOT device names
-
-=head1 SYNOPSIS
-
-  use PGPLOT::Device;
-
-  $device = PGPLOT::Device->new( $spec );
-  $device = PGPLOT::Device->new( \%specs );
-
-  # straight PGPLOT
-  pgbegin( 0, $device, 1, 1);
-
-  # PDL
-  $win = PDL::Graphics::PGPLOT::Window->new({ Device => $device} );
-
-
-=head1 DESCRIPTION
-
-It is sometimes surprisingly difficult to create an appropriate PGPLOT
-device.  Coding for both interactive and hardcopy devices can lead to
-code which repeatedly has to check the device type to generate the
-correct device name.  If an application outputs multiple plots, it
-needs to meld unique names (usually based upon the output format) to
-the user's choice of output device.  The user should be given some
-flexibility in specifying a device or hardcopy filename output
-specification without making life difficult for the developer.
-
-This module tries to help reduce the agony.  It does this by creating
-an object which will resolve to a legal PGPLOT device specification.
-The object can handle autoincrementing of interactive window ids,
-interpolation of variables into file names, automatic generation of
-output suffices for hardcopy devices, etc.
-
-Here's the general scheme:
-
-=over
-
-=item *
-
-The application creates the object, using the user's PGPLOT device
-specification to initialize it.
-
-=item *
-
-Before creating a new plot, the application specifies the output
-filename it would like to have.  The filename may use interpolated
-variables.  This is ignored if the device is interactive, as it is
-meaningless in that context
-
-=item *
-
-Each time that the object value is retrieved using the C<next()>
-method, the internal window id is incremented, any variables in the
-filename are interpolated, and the result is returned.
-
-=back
-
-
-=head2 Interactive devices
-
-Currently, the C</xs> and C</xw> devices are recognized as being
-interactive.  PGPLOT allows more than one such window to be displayed;
-this is accomplished by preceding the device name with an integer id,
-e.g. C<2/xs>.  If a program generates several independent plots, it can
-either prompt between overwriting plots in a single window, or it may
-choose to use multiple plotting windows.  This module assists in the
-latter case by implementing auto-increment of the window id.  The
-device specification syntax is extended to C<+N/xs> where C<N> is an
-integer indicating the initial window id.
-
-=head2 Hardcopy devices
-
-Hardcopy device specifications (i.e. not C</xs> or C</xw>) are
-specified as C<filename/device>.  The filename is optional, and will
-automatically be given the extension appropriate to the output file
-format.  If a filename is specified in the specification passed to the
-B<new> method, it cannot be overridden.  This allows the user to
-specify a single output file for all hardcopy plots.  This works well
-for PostScript, which can handle multiple pages per file, but for the
-PNG device, this results in multiple output files with numbered
-suffices.  It's not pretty!  This module needs to be extended so it
-knows if a single output file can handle more than one page.
-
-Variables may be interpolated into the filenames using the
-C<${variable}> syntax (curly brackets are required).  Note that only
-simple scalars may be interpolated (not hash or array elements). The
-values may be formatted using B<sprintf> by appending the format, i.e.
-C<${variable:format}>.  Variables which are available to be
-interpolated are either those declared using B<our>, or those passed
-into the class constructor.
-
-The  internal counter which tracks the number of times the device object has
-been used is available as C<${devn}>.
-
-
-=head2 Methods
-
-=over
-
-=item new
+=method new
 
   $dev = PGPLOT::Device->new( $spec, \%opts );
 
@@ -490,7 +87,98 @@ will also result in C<foo34.ps>.
 
 =back
 
-=item override
+=cut
+
+sub new
+{
+  my $class = shift;
+
+  _class_init();
+
+  my $self = { devn => 1,
+               last => undef,
+               vars => {} };
+  bless $self, $class;
+
+  $self->_initialize(@_);
+
+  # need to keep track of whether there was an initial prefix
+  $self->{init_prefix} = defined $self->{prefix};
+
+  $self;
+}
+
+sub _class_init
+{
+  return if $NDevices;
+
+  require PGPLOT;
+  PGPLOT::pgqndt( $NDevices );
+
+  my @devices;
+
+  for my $didx ( 1..$NDevices )
+  {
+    my ( $type, $tlen, $descr, $dlen, $inter );
+    PGPLOT::pgqdt( $didx, $type, $tlen, $descr, $dlen, $inter );
+    $type =~ s{/}{};
+    $PGDevice{lc $type} =
+      { idx => $didx,
+        type => lc($type),
+        tlen => $tlen,
+        descr => $descr,
+        dlen => $dlen,
+        inter => $inter,
+      };
+
+    push @devices, lc $type;
+  }
+
+  require Text::Abbrev;
+  Text::Abbrev::abbrev( \%DevMap, @devices );
+}
+
+
+sub _initialize
+{
+  my $opts = 'HASH' eq ref $_[-1] ? pop @_ : {};
+
+  my ( $self, $spec ) = @_;
+
+  my %spec = defined $spec ? $self->_parse_spec($spec) : ();
+
+  # don't allow an override to change the device
+  delete $spec{device} if defined $self->{device};
+
+  # don't allow an override to change an initial prefix
+  delete $spec{prefix} if $self->{init_prefix};
+
+  # fill the object
+  $self->{$_} = $spec{$_} for keys %spec;
+
+  unless ( defined $self->{device} )
+  {
+    $self->{device} = $Default{device};
+    $self->{devinfo} = $PGDevice{$DevMap{$Default{device}}};
+  }
+
+  if ( exists $opts->{vars} )
+  {
+      require Carp;
+      Carp::croak( "vars attribute must be a hash\n" )
+          unless 'HASH' eq ref $opts->{vars};
+
+    $self->{vars} = $opts->{vars};
+  }
+
+
+  $self->{ask} = $self->is_interactive && $self->is_const;
+
+
+  $self;
+}
+
+=method override
 
   $dev->override( $filename, \%opts );
 
@@ -504,7 +192,21 @@ which will override any specified earlier, but this is frowned upon.
 
 It takes the same options as does the B<new()> method.
 
-=item devn
+=cut
+
+sub override
+{
+  my $self = shift;
+
+  if ( ! $self->is_interactive() )
+  {
+    $self->_initialize(@_);
+  }
+
+  $self;
+}
+
+=method devn
 
   $devn = $dev->devn;
   $dev->devn( $new_value);
@@ -512,31 +214,18 @@ It takes the same options as does the B<new()> method.
 This is an accessor which retrieves and/or sets the device number for
 interactive devices.
 
-=item next
+=cut
 
-  $dev_str = $dev->next;
+sub devn
+{
+  my $self = shift;
+  my $old = $self->{devn};
+  $self->{devn} = shift if @_;
 
-This method is the basis for the automatic updating of the device
-specification when the object is used as a string.  If desired it may
- be used directly.  It will return the next device specification. It
-increments the device number.
+  $old;
+}
 
-=item current
-
-  $dev_str = $dev->current;
-
-This returns the device string which would be generated in the current
-environment.  It does not alter the environment.
-
-=item last
-
-  $dev_str = $dev->current;
-
-This returns the last generated device string.  It does not alter the
-environment.
-
-
-=item ask
+=method ask
 
   if ( $device->ask ) { .. }
 
@@ -545,14 +234,173 @@ new plots erase old plots.  This can be used with the B<pgask()>
 PGPLOT subroutine to ensure that the user will see all of the plots.
 See L</EXAMPLES>.
 
-=item is_const
+=cut
+
+sub ask { $_[0]->{ask} };
+
+
+sub _parse_spec
+{
+  my ( $self, $spec ) = @_;
+  my ( $prefix, $device );
+  my %spec;
+
+
+  # split into prefix and /device.  set to prefix only, if no match,
+  # as that'll be the case if no device was specified.
+  $prefix = $spec
+    if 0 == ( ( $prefix, $device ) = $spec =~ m{(.*)/([^/]+)$} );
+
+
+  # be careful that a multi-directory path (dir/prefix) doesn't get
+  # translated into file/device.  If /prefix looks like a real PGPLOT
+  # device, this will fail horribly.
+
+  # if there's already a device, discard /device if it looks like
+  # a PGPLOT device, else append it to prefix.
+
+  # if there's not already a device, /device had better look like
+  # a PGPLOT device.
+
+  if ( defined $device && ! exists $DevMap{lc $device} )
+  {
+    if ( defined $self->{device} )
+    {
+      $prefix .= '/' . $device;
+      undef $device;
+    }
+
+    # no pre-existing device.  make sure that the device is a real one
+    else
+    {
+        require Carp;
+        Carp::croak( "unknown PGPLOT device: $device\n" );
+    }
+  }
+
+  # if device isn't defined, use the existing one for the object
+  $spec{device} = defined $device ? lc($device) : $self->{device};
+  $spec{devinfo} = $PGDevice{$DevMap{$spec{device}}};
+  $spec{prefix} = $prefix;
+
+  if ( $prefix )
+  {
+    # numeric (possibly autoincrement)
+    if ( $prefix =~ /^([+])?(\d+)?$/ )
+    {
+      $spec{devn}  = defined $2 ? $2 : 1;
+
+      # if +, autoincrement device number
+      # we use interpolation to handle this case
+      $spec{prefix} = defined $1 ? '${devn}' : $2;
+    }
+
+    elsif ( defined $spec{device} )
+    {
+      if ( ! $spec{devinfo}{inter} )
+      {
+        my $ext = ($spec{device} =~ m{^v?c?(ps)$}i) ?
+                           ".$1" : '.' . $spec{device};
+
+        # make sure the appropriate suffix is in there
+        $prefix =~ s/${ext}$//;
+        $prefix .= $ext;
+        $spec{prefix} = $prefix;
+      }
+
+      # we've got a situation here. an interactive device with a nonparseable
+      # prefix.  better bail
+      else
+      {
+          require Carp;
+          Carp::croak( "error: interactive device with unparseable prefix: $spec\n" );
+      }
+    }
+  }
+
+  # only defined keys get through. makes it easier to override
+  # things
+  delete $spec{$_}
+    for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
+
+  %spec;
+}
+
+=method next
+
+  $dev_str = $dev->next;
+
+This method is the basis for the automatic updating of the device
+specification when the object is used as a string.  If desired it may
+ be used directly.  It will return the next device specification. It
+increments the device number.
+
+=cut
+
+sub next
+{
+  my $self = shift;
+
+  $self->{last} = $self->_stringify;
+  $self->{devn}++;
+  $self->{last};
+}
+
+=method current
+
+  $dev_str = $dev->current;
+
+This returns the device string which would be generated in the current
+environment.  It does not alter the environment.
+
+=cut
+
+sub current
+{
+  my $self = shift;
+
+  $self->_stringify;
+}
+
+=method last
+
+  $dev_str = $dev->current;
+
+This returns the last generated device string.  It does not alter the
+environment.
+
+=cut
+
+sub last
+{
+  my $self = shift;
+  $self->{last};
+}
+
+sub _compare
+{
+  my ( $self, $other, $reverse ) = @_;
+
+  $reverse ?  $other cmp $self->_stringify :  $self->_stringify cmp $other;
+}
+
+=method is_const
 
   if ( $dev->is_const ) { ... }
 
 This method returns true if the device specification does not
 interpolate any variables or device numbers.
 
-=item would_change
+=cut
+
+sub is_const
+{
+  my $self = shift;
+  defined $self->{prefix} ?
+    ($self->_stringify eq $self->{prefix} . '/' . $self->{device}) : 1;
+}
+
+=method would_change
 
   if ( $dev->would_change ) { ... }
 
@@ -562,20 +410,188 @@ returns true if no device specification has yet been generated.
 
 It does not change the current environment.
 
-=item is_interactive
+=cut
+
+sub would_change
+{
+  my $self = shift;
+
+  return defined $self->{last} ? $self->_stringify ne $self->{last} : 1;
+}
+
+=method is_interactive
 
   if ( $dev->is_interactive ) { ... }
 
 This method returns true if the device is an interactive device.
 
-=item is_ephemeral
+=cut
+
+sub is_interactive
+{
+  my $self = shift;
+
+  $self->{devinfo}{inter};
+}
+
+=method is_ephemeral
 
   if ( $dev->is_ephemeral ) { ... }
 
 This method returns true if the plot display will disappear if the
 device is closed (e.g., the C</xw> device ).
 
+=cut
+
+sub is_ephemeral
+{
+  my $self = shift;
+  $self->{device} =~ /$ephemeral/;
+}
+
+
+sub _stringify
+{
+  my $self = shift;
+
+  # handle interpolated values
+  my $prefix = defined $self->{prefix} ? $self->{prefix} : '';
+
+  # get calling package
+
+  my ( $fmt, $val );
+
+  ## no critic ( ProhibitNoStrict );
+  no strict 'refs';
+  my $pkg = (caller(1))[0];
+  1 while
+    $prefix =~
+      s/ \$\{ (\w+) (?::([^\}]+))? } /
+        $fmt = defined $2 ? $2 : '%s';
+
+        $val =
+
+        # special: device id
+           $1 eq 'devn' ? $self->{devn} :
+
+        # part of the user passed set of variables?
+           exists $self->{vars}{$1} ?
+
+        # dereference it if it's a scalar ref, else use it directly
+        ( 'SCALAR' eq ref $self->{vars}{$1} ?
+          ${$self->{vars}{$1}} : $self->{vars}{$1} ) :
+
+        # is it in the parent package?
+          defined ${*{"${pkg}::$1"}{SCALAR}} ? ${*{"${pkg}::$1"}{SCALAR}} :
+
+        # nothing
+          undef;
+
+        sprintf( $fmt, $val ) if defined $val;
+  /ex;
+
+  $prefix . '/' . $self->{device};
+}
+
+1;
+
+# COPYRIGHT
+
+__END__
+
+
+=head1 SYNOPSIS
+
+  use PGPLOT::Device;
+
+  $device = PGPLOT::Device->new( $spec );
+  $device = PGPLOT::Device->new( \%specs );
+
+  # straight PGPLOT
+  pgbegin( 0, $device, 1, 1);
+
+  # PDL
+  $win = PDL::Graphics::PGPLOT::Window->new({ Device => $device} );
+
+
+=head1 DESCRIPTION
+
+It is sometimes surprisingly difficult to create an appropriate PGPLOT
+device.  Coding for both interactive and hardcopy devices can lead to
+code which repeatedly has to check the device type to generate the
+correct device name.  If an application outputs multiple plots, it
+needs to meld unique names (usually based upon the output format) to
+the user's choice of output device.  The user should be given some
+flexibility in specifying a device or hardcopy filename output
+specification without making life difficult for the developer.
+
+This module tries to help reduce the agony.  It does this by creating
+an object which will resolve to a legal PGPLOT device specification.
+The object can handle auto-incrementing of interactive window ids,
+interpolation of variables into file names, automatic generation of
+output suffices for hardcopy devices, etc.
+
+Here's the general scheme:
+
+=over
+
+=item *
+
+The application creates the object, using the user's PGPLOT device
+specification to initialize it.
+
+=item *
+
+Before creating a new plot, the application specifies the output
+filename it would like to have.  The filename may use interpolated
+variables.  This is ignored if the device is interactive, as it is
+meaningless in that context
+
+=item *
+
+Each time that the object value is retrieved using the C<next()>
+method, the internal window id is incremented, any variables in the
+filename are interpolated, and the result is returned.
+
 =back
+
+
+=head2 Interactive devices
+
+Currently, the C</xs> and C</xw> devices are recognized as being
+interactive.  PGPLOT allows more than one such window to be displayed;
+this is accomplished by preceding the device name with an integer id,
+e.g. C<2/xs>.  If a program generates several independent plots, it can
+either prompt between overwriting plots in a single window, or it may
+choose to use multiple plotting windows.  This module assists in the
+latter case by implementing auto-increment of the window id.  The
+device specification syntax is extended to C<+N/xs> where C<N> is an
+integer indicating the initial window id.
+
+=head2 Hardcopy devices
+
+Hardcopy device specifications (i.e. not C</xs> or C</xw>) are
+specified as C<filename/device>.  The filename is optional, and will
+automatically be given the extension appropriate to the output file
+format.  If a filename is specified in the specification passed to the
+B<new> method, it cannot be overridden.  This allows the user to
+specify a single output file for all hardcopy plots.  This works well
+for PostScript, which can handle multiple pages per file, but for the
+PNG device, this results in multiple output files with numbered
+suffices.  It's not pretty!  This module needs to be extended so it
+knows if a single output file can handle more than one page.
+
+Variables may be interpolated into the filenames using the
+C<${variable}> syntax (curly brackets are required).  Note that only
+simple scalars may be interpolated (not hash or array elements). The
+values may be formatted using B<sprintf> by appending the format, i.e.
+C<${variable:format}>.  Variables which are available to be
+interpolated are either those declared using B<our>, or those passed
+into the class constructor.
+
+The  internal counter which tracks the number of times the device object has
+been used is available as C<${devn}>.
+
 
 =head1 EXAMPLES
 
@@ -606,7 +622,7 @@ Use B<next()> to retrieve the value:
 
 The application outputs multiple plots, and the user should be able to
 decide whether a single interactive device window should be used, or
-whether mutiple ones should be used.  In the first instance, the user
+whether multiple ones should be used.  In the first instance, the user
 specifies the device as C</xs>, in the second C<+/xs> or C<+1/xs>:
 
   $device = PGPLOT::Device->new( $user_device_spec );
@@ -675,17 +691,8 @@ are generated within loops:
 
 =head1 SEE ALSO
 
-PGPLOT, PDL, PDL::Graphics::PGPLOT::Window.
-
-=head1 AUTHOR
-
-Diab Jerius, E<lt>djerius@cfa.harvard.eduE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2004 by the Smithsonian Astrophysical Observatory.
-This software is released under the GNU General Public License.  You
-may find a copy at L<http://www.fsf.org/copyleft/gpl.html>
-
+L<PGPLOT>
+L<PDL>
+L<PDL::Graphics::PGPLOT::Window>
 
 =cut

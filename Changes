@@ -1,4 +1,6 @@
-Revision history for Perl extension PGPLOT::Device.
+Revision history for {{$dist->name}}
+
+{{$NEXT}}
 
 0.08  2016-07-19T16:35:22-0400
 
