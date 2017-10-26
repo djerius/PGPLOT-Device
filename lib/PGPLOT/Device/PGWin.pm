@@ -7,7 +7,7 @@ use warnings;
 
 our @ISA = qw();
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 
 use PGPLOT::Device;
