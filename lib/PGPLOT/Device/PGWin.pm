@@ -9,6 +9,7 @@ our @ISA = qw();
 
 our $VERSION = '0.12';
 
+use List::Util 1.33;
 
 use PGPLOT::Device;
 use PGPLOT ();
@@ -22,16 +23,16 @@ Create a new object.  The possible options are:
 
 =over
 
-=item Device
+=item device
 
 The device specification.  This is passed directly to
 L<PGPLOT::Device/new>, so see it's documentation.
 
-=item DevOpts
+=item devopts
 
 A hashref containing options to pass to L<PGPLOT::Device/new>.
 
-=item WinOpts
+=item winopts
 
 A hashref containing options to pass to
 L<PDL::Graphics::PGPLOT::Windows/new>.  Do not include a C<Device>
@@ -45,22 +46,57 @@ sub new
 {
   my ( $class, $opt ) = @_;
 
-  my %opt = ( WinOpts => {},
-              defined $opt ? %$opt : () );
+  my %opt = List::Util::pairmap { lc( $a ) => $b }
+  winopts => {},
+    defined $opt ? %$opt : ();
 
   my $self = {};
   $self->{device} =
     PGPLOT::Device->new(
-                        defined $opt{Device}  ? $opt{Device}  : (),
-                        defined $opt{DevOpts} ? $opt{DevOpts} : (),
+                        defined $opt{device}  ? $opt{device}  : (),
+                        defined $opt{devopts} ? $opt{devopts} : (),
                        );
   $self->{not_first} = 0;
   $self->{win} = undef;
-  $self->{WinOpts} = $opt{WinOpts};
+  $self->{winopts} = { %{ $opt{winopts} } };
+  $self->{_would_change} = 0;
 
   bless $self, $class;
 
   $self;
+}
+
+=method winopts
+
+  # retrieve a copy
+  $winopts = $pgwin->winopts;
+
+  # update
+  $pgwin->winopts( \%winopts );
+
+=cut
+
+sub winopts
+{
+
+  if ( defined $_[1] ) {
+      my ( $self, $new ) = @_;
+
+      my $orig = $self->{winopts};
+
+      unless (
+          List::Util::all {
+              ( exists $new->{$_} && exists $orig->{$_} )
+                && ( ( !defined $new->{$_} && !defined $orig->{$_} )
+                  || ( $new->{$_} eq $orig->{$_} ) )
+          }
+          List::Util::uniq( keys %$new, keys %$orig ) )
+      {
+          $self->{winopts}       = { %{$new} };
+          $self->{_would_change} = 1;
+      }
+  }
+  return { %{ $_[0]->{winopts} } };
 }
 
 =method device
@@ -98,12 +134,13 @@ sub next
   PGPLOT::pgask( $self->{device}->ask )
     if $self->{not_first}++;
 
-  if ( $self->{device}->would_change )
+  if ( $self->{_would_change} || $self->{device}->would_change )
   {
     $self->{win}->close if defined $self->{win};
     $self->{win} =
       PDL::Graphics::PGPLOT::Window->new({ Device => $self->{device}->next,
-                                           %{$self->{WinOpts}} } );
+                                           %{ $self->{winopts} } } );
+    $self->{_would_change} = 0;
   }
 
   $self->{win};
@@ -153,10 +190,14 @@ sub finish
 
 __END__
 
+=for stopwords
+devopts
+winopts
+
 =head1 SYNOPSIS
 
   $pgwin = PGPLOT::Device::PGWin->new( { device => $user_device_spec,
-                                         WinOpts => \%opts } );
+                                         winopts => \%opts } );
 
   $pgwin->override( $override );
   $win = $pgwin->next;

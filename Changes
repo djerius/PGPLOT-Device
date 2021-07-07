@@ -2,6 +2,14 @@ Revision history for {{$dist->name}}
 
 {{$NEXT}}
 
+  [ENHANCEMENT]
+
+    * PGPLOT::Device::PGWin: allow lowercase hash keys in constructor
+
+    * PGPLOT::Device::PGWin: new method winopts to get/set window options. changes
+      will trigger closing/opening a new PDL::Graphics::PGPLOT::Window ojbect.
+
+
 0.11      2021-07-07 10:08:04-04:00 America/New_York
 
   [TEST FIX]
