@@ -12,7 +12,7 @@ our $VERSION = '0.12';
 use List::Util 1.33;
 
 use PGPLOT::Device;
-use PGPLOT ();
+use PGPLOT                        ();
 use PDL::Graphics::PGPLOT::Window ();
 
 =method new
@@ -42,28 +42,26 @@ option as that will break things.
 
 =cut
 
-sub new
-{
-  my ( $class, $opt ) = @_;
+sub new {
+    my ( $class, $opt ) = @_;
 
-  my %opt = List::Util::pairmap { lc( $a ) => $b }
-  winopts => {},
-    defined $opt ? %$opt : ();
+    my %opt = List::Util::pairmap { lc( $a ) => $b }
+    winopts => {},
+      defined $opt ? %$opt : ();
 
-  my $self = {};
-  $self->{device} =
-    PGPLOT::Device->new(
-                        defined $opt{device}  ? $opt{device}  : (),
-                        defined $opt{devopts} ? $opt{devopts} : (),
-                       );
-  $self->{not_first} = 0;
-  $self->{win} = undef;
-  $self->{winopts} = { %{ $opt{winopts} } };
-  $self->{_would_change} = 0;
+    my $self = {};
+    $self->{device} = PGPLOT::Device->new(
+        defined $opt{device}  ? $opt{device}  : (),
+        defined $opt{devopts} ? $opt{devopts} : (),
+    );
+    $self->{not_first}     = 0;
+    $self->{win}           = undef;
+    $self->{winopts}       = { %{ $opt{winopts} } };
+    $self->{_would_change} = 0;
 
-  bless $self, $class;
+    bless $self, $class;
 
-  $self;
+    $self;
 }
 
 =method winopts
@@ -76,27 +74,26 @@ sub new
 
 =cut
 
-sub winopts
-{
+sub winopts {
 
-  if ( defined $_[1] ) {
-      my ( $self, $new ) = @_;
+    if ( defined $_[1] ) {
+        my ( $self, $new ) = @_;
 
-      my $orig = $self->{winopts};
+        my $orig = $self->{winopts};
 
-      unless (
-          List::Util::all {
-              ( exists $new->{$_} && exists $orig->{$_} )
-                && ( ( !defined $new->{$_} && !defined $orig->{$_} )
-                  || ( $new->{$_} eq $orig->{$_} ) )
-          }
-          List::Util::uniq( keys %$new, keys %$orig ) )
-      {
-          $self->{winopts}       = { %{$new} };
-          $self->{_would_change} = 1;
-      }
-  }
-  return { %{ $_[0]->{winopts} } };
+        unless (
+            List::Util::all {
+                ( exists $new->{$_} && exists $orig->{$_} )
+                  && ( ( !defined $new->{$_} && !defined $orig->{$_} )
+                    || ( $new->{$_} eq $orig->{$_} ) )
+            }
+            List::Util::uniq( keys %$new, keys %$orig ) )
+        {
+            $self->{winopts}       = { %{$new} };
+            $self->{_would_change} = 1;
+        }
+    }
+    return { %{ $_[0]->{winopts} } };
 }
 
 =method device
@@ -123,27 +120,25 @@ following call sequence:
 
 =cut
 
-sub next
-{
-  my $self = shift;
+sub next {
+    my $self = shift;
 
-  $self->override( @_ ) if @_;
+    $self->override( @_ ) if @_;
 
-  # prompt user before displaying second and subsequent plots if
-  # a new plot will erase the previous one
-  PGPLOT::pgask( $self->{device}->ask )
-    if $self->{not_first}++;
+    # prompt user before displaying second and subsequent plots if
+    # a new plot will erase the previous one
+    PGPLOT::pgask( $self->{device}->ask )
+      if $self->{not_first}++;
 
-  if ( $self->{_would_change} || $self->{device}->would_change )
-  {
-    $self->{win}->close if defined $self->{win};
-    $self->{win} =
-      PDL::Graphics::PGPLOT::Window->new({ Device => $self->{device}->next,
-                                           %{ $self->{winopts} } } );
-    $self->{_would_change} = 0;
-  }
+    if ( $self->{_would_change} || $self->{device}->would_change ) {
+        $self->{win}->close if defined $self->{win};
+        $self->{win} = PDL::Graphics::PGPLOT::Window->new( {
+                Device => $self->{device}->next,
+                %{ $self->{winopts} } } );
+        $self->{_would_change} = 0;
+    }
 
-  $self->{win};
+    $self->{win};
 }
 
 =method override
@@ -155,10 +150,9 @@ L<PGPLOT::Device> object.
 
 =cut
 
-sub override
-{
-  my $self = shift;
-  $self->{device}->override( @_ );
+sub override {
+    my $self = shift;
+    $self->{device}->override( @_ );
 }
 
 =method finish
@@ -176,15 +170,13 @@ L<PDL::Graphics::PGPLOT::Window> object is destroyed I<before> this
 object.
 
 =cut
-sub finish
-{
-  my ( $self ) = @_;
-  # make sure that the plot stays up until the user is done with it
-  if ( defined $self->{win} )
-  {
-    PGPLOT::pgask(1) if $self->{device}->is_ephemeral;
-    $self->{win}->close;
-  }
+sub finish {
+    my ( $self ) = @_;
+    # make sure that the plot stays up until the user is done with it
+    if ( defined $self->{win} ) {
+        PGPLOT::pgask( 1 ) if $self->{device}->is_ephemeral;
+        $self->{win}->close;
+    }
 }
 
 

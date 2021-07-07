@@ -8,9 +8,7 @@ use warnings;
 our $VERSION = '0.12';
 
 
-our %Default = (
-                device => 'xs',
-               );
+our %Default = ( device => 'xs', );
 
 our $ephemeral = qr{^xw$};
 our $NDevices;
@@ -93,92 +91,87 @@ will also result in C<foo34.ps>.
 
 =cut
 
-sub new
-{
-  my $class = shift;
+sub new {
+    my $class = shift;
 
-  _class_init();
+    _class_init();
 
-  my $self = { devn => 1,
-               last => undef,
-               vars => {} };
-  bless $self, $class;
+    my $self = {
+        devn => 1,
+        last => undef,
+        vars => {} };
+    bless $self, $class;
 
-  $self->_initialize(@_);
+    $self->_initialize( @_ );
 
-  # need to keep track of whether there was an initial prefix
-  $self->{init_prefix} = defined $self->{prefix};
+    # need to keep track of whether there was an initial prefix
+    $self->{init_prefix} = defined $self->{prefix};
 
-  $self;
+    $self;
 }
 
-sub _class_init
-{
-  return if $NDevices;
+sub _class_init {
+    return if $NDevices;
 
-  require PGPLOT;
-  PGPLOT::pgqndt( $NDevices );
+    require PGPLOT;
+    PGPLOT::pgqndt( $NDevices );
 
-  my @devices;
+    my @devices;
 
-  for my $didx ( 1..$NDevices )
-  {
-    my ( $type, $tlen, $descr, $dlen, $inter );
-    PGPLOT::pgqdt( $didx, $type, $tlen, $descr, $dlen, $inter );
-    $type =~ s{/}{};
-    $PGDevice{lc $type} =
-      { idx => $didx,
-        type => lc($type),
-        tlen => $tlen,
-        descr => $descr,
-        dlen => $dlen,
-        inter => $inter,
-      };
+    for my $didx ( 1 .. $NDevices ) {
+        my ( $type, $tlen, $descr, $dlen, $inter );
+        PGPLOT::pgqdt( $didx, $type, $tlen, $descr, $dlen, $inter );
+        $type =~ s{/}{};
+        $PGDevice{ lc $type } = {
+            idx   => $didx,
+            type  => lc( $type ),
+            tlen  => $tlen,
+            descr => $descr,
+            dlen  => $dlen,
+            inter => $inter,
+        };
 
-    push @devices, lc $type;
-  }
+        push @devices, lc $type;
+    }
 
-  require Text::Abbrev;
-  Text::Abbrev::abbrev( \%DevMap, @devices );
+    require Text::Abbrev;
+    Text::Abbrev::abbrev( \%DevMap, @devices );
 }
 
 
-sub _initialize
-{
-  my $opts = 'HASH' eq ref $_[-1] ? pop @_ : {};
+sub _initialize {
+    my $opts = 'HASH' eq ref $_[-1] ? pop @_ : {};
 
-  my ( $self, $spec ) = @_;
+    my ( $self, $spec ) = @_;
 
-  my %spec = defined $spec ? $self->_parse_spec($spec) : ();
+    my %spec = defined $spec ? $self->_parse_spec( $spec ) : ();
 
-  # don't allow an override to change the device
-  delete $spec{device} if defined $self->{device};
+    # don't allow an override to change the device
+    delete $spec{device} if defined $self->{device};
 
-  # don't allow an override to change an initial prefix
-  delete $spec{prefix} if $self->{init_prefix};
+    # don't allow an override to change an initial prefix
+    delete $spec{prefix} if $self->{init_prefix};
 
-  # fill the object
-  $self->{$_} = $spec{$_} for keys %spec;
+    # fill the object
+    $self->{$_} = $spec{$_} for keys %spec;
 
-  unless ( defined $self->{device} )
-  {
-    $self->{device} = $Default{device};
-    $self->{devinfo} = $PGDevice{$DevMap{$Default{device}}};
-  }
+    unless ( defined $self->{device} ) {
+        $self->{device}  = $Default{device};
+        $self->{devinfo} = $PGDevice{ $DevMap{ $Default{device} } };
+    }
 
-  if ( exists $opts->{vars} )
-  {
-      _croak( "vars attribute must be a hash\n" )
+    if ( exists $opts->{vars} ) {
+        _croak( "vars attribute must be a hash\n" )
           unless 'HASH' eq ref $opts->{vars};
 
-    $self->{vars} = $opts->{vars};
-  }
+        $self->{vars} = $opts->{vars};
+    }
 
 
-  $self->{ask} = $self->is_interactive && $self->is_const;
+    $self->{ask} = $self->is_interactive && $self->is_const;
 
 
-  $self;
+    $self;
 }
 
 =method override
@@ -197,16 +190,14 @@ It takes the same options as does the B<new()> method.
 
 =cut
 
-sub override
-{
-  my $self = shift;
+sub override {
+    my $self = shift;
 
-  if ( ! $self->is_interactive() )
-  {
-    $self->_initialize(@_);
-  }
+    if ( !$self->is_interactive() ) {
+        $self->_initialize( @_ );
+    }
 
-  $self;
+    $self;
 }
 
 =method devn
@@ -219,13 +210,12 @@ interactive devices.
 
 =cut
 
-sub devn
-{
-  my $self = shift;
-  my $old = $self->{devn};
-  $self->{devn} = shift if @_;
+sub devn {
+    my $self = shift;
+    my $old  = $self->{devn};
+    $self->{devn} = shift if @_;
 
-  $old;
+    $old;
 }
 
 =method ask
@@ -239,92 +229,87 @@ See L</EXAMPLES>.
 
 =cut
 
-sub ask { $_[0]->{ask} };
+sub ask { $_[0]->{ask} }
 
 
-sub _parse_spec
-{
-  my ( $self, $spec ) = @_;
-  my ( $prefix, $device );
-  my %spec;
+sub _parse_spec {
+    my ( $self, $spec ) = @_;
+    my ( $prefix, $device );
+    my %spec;
 
 
-  # split into prefix and /device.  set to prefix only, if no match,
-  # as that'll be the case if no device was specified.
-  $prefix = $spec
-    if 0 == ( ( $prefix, $device ) = $spec =~ m{(.*)/([^/]+)$} );
+    # split into prefix and /device.  set to prefix only, if no match,
+    # as that'll be the case if no device was specified.
+    $prefix = $spec
+      if 0 == ( ( $prefix, $device ) = $spec =~ m{(.*)/([^/]+)$} );
 
 
-  # be careful that a multi-directory path (dir/prefix) doesn't get
-  # translated into file/device.  If /prefix looks like a real PGPLOT
-  # device, this will fail horribly.
+    # be careful that a multi-directory path (dir/prefix) doesn't get
+    # translated into file/device.  If /prefix looks like a real PGPLOT
+    # device, this will fail horribly.
 
-  # if there's already a device, discard /device if it looks like
-  # a PGPLOT device, else append it to prefix.
+    # if there's already a device, discard /device if it looks like
+    # a PGPLOT device, else append it to prefix.
 
-  # if there's not already a device, /device had better look like
-  # a PGPLOT device.
+    # if there's not already a device, /device had better look like
+    # a PGPLOT device.
 
-  if ( defined $device && ! exists $DevMap{lc $device} )
-  {
-    if ( defined $self->{device} )
-    {
-      $prefix .= '/' . $device;
-      undef $device;
+    if ( defined $device && !exists $DevMap{ lc $device } ) {
+        if ( defined $self->{device} ) {
+            $prefix .= '/' . $device;
+            undef $device;
+        }
+
+        # no pre-existing device.  make sure that the device is a real one
+        else {
+            _croak( "unknown PGPLOT device: $device\n" );
+        }
     }
 
-    # no pre-existing device.  make sure that the device is a real one
-    else
-    {
-        _croak( "unknown PGPLOT device: $device\n" );
+    # if device isn't defined, use the existing one for the object
+    $spec{device}  = defined $device ? lc( $device ) : $self->{device};
+    $spec{devinfo} = $PGDevice{ $DevMap{ $spec{device} } };
+    $spec{prefix}  = $prefix;
+
+    if ( $prefix ) {
+        # numeric (possibly autoincrement)
+        if ( $prefix =~ /^([+])?(\d+)?$/ ) {
+            $spec{devn} = defined $2 ? $2 : 1;
+
+            # if +, autoincrement device number
+            # we use interpolation to handle this case
+            $spec{prefix} = defined $1 ? '${devn}' : $2;
+        }
+
+        elsif ( defined $spec{device} ) {
+            if ( !$spec{devinfo}{inter} ) {
+                my $ext
+                  = ( $spec{device} =~ m{^v?c?(ps)$}i )
+                  ? ".$1"
+                  : '.' . $spec{device};
+
+                # make sure the appropriate suffix is in there
+                $prefix =~ s/${ext}$//;
+                $prefix .= $ext;
+                $spec{prefix} = $prefix;
+            }
+
+         # we've got a situation here. an interactive device with a nonparseable
+         # prefix.  better bail
+            else {
+                _croak(
+                    "error: interactive device with unparseable prefix: $spec\n"
+                );
+            }
+        }
     }
-  }
 
-  # if device isn't defined, use the existing one for the object
-  $spec{device} = defined $device ? lc($device) : $self->{device};
-  $spec{devinfo} = $PGDevice{$DevMap{$spec{device}}};
-  $spec{prefix} = $prefix;
+    # only defined keys get through. makes it easier to override
+    # things
+    delete $spec{$_}
+      for grep { !defined $spec{$_} || '' eq $spec{$_} } keys %spec;
 
-  if ( $prefix )
-  {
-    # numeric (possibly autoincrement)
-    if ( $prefix =~ /^([+])?(\d+)?$/ )
-    {
-      $spec{devn}  = defined $2 ? $2 : 1;
-
-      # if +, autoincrement device number
-      # we use interpolation to handle this case
-      $spec{prefix} = defined $1 ? '${devn}' : $2;
-    }
-
-    elsif ( defined $spec{device} )
-    {
-      if ( ! $spec{devinfo}{inter} )
-      {
-        my $ext = ($spec{device} =~ m{^v?c?(ps)$}i) ?
-                           ".$1" : '.' . $spec{device};
-
-        # make sure the appropriate suffix is in there
-        $prefix =~ s/${ext}$//;
-        $prefix .= $ext;
-        $spec{prefix} = $prefix;
-      }
-
-      # we've got a situation here. an interactive device with a nonparseable
-      # prefix.  better bail
-      else
-      {
-          _croak( "error: interactive device with unparseable prefix: $spec\n" );
-      }
-    }
-  }
-
-  # only defined keys get through. makes it easier to override
-  # things
-  delete $spec{$_}
-    for grep { ! defined $spec{$_}  || '' eq $spec{$_} } keys %spec;
-
-  %spec;
+    %spec;
 }
 
 =method next
@@ -338,13 +323,12 @@ increments the device number.
 
 =cut
 
-sub next
-{
-  my $self = shift;
+sub next {
+    my $self = shift;
 
-  $self->{last} = $self->_stringify;
-  $self->{devn}++;
-  $self->{last};
+    $self->{last} = $self->_stringify;
+    $self->{devn}++;
+    $self->{last};
 }
 
 =method current
@@ -356,11 +340,10 @@ environment.  It does not alter the environment.
 
 =cut
 
-sub current
-{
-  my $self = shift;
+sub current {
+    my $self = shift;
 
-  $self->_stringify;
+    $self->_stringify;
 }
 
 =method last
@@ -372,17 +355,15 @@ environment.
 
 =cut
 
-sub last
-{
-  my $self = shift;
-  $self->{last};
+sub last {
+    my $self = shift;
+    $self->{last};
 }
 
-sub _compare
-{
-  my ( $self, $other, $reverse ) = @_;
+sub _compare {
+    my ( $self, $other, $reverse ) = @_;
 
-  $reverse ?  $other cmp $self->_stringify :  $self->_stringify cmp $other;
+    $reverse ? $other cmp $self->_stringify : $self->_stringify cmp $other;
 }
 
 =method is_const
@@ -394,11 +375,11 @@ interpolate any variables or device numbers.
 
 =cut
 
-sub is_const
-{
-  my $self = shift;
-  defined $self->{prefix} ?
-    ($self->_stringify eq $self->{prefix} . '/' . $self->{device}) : 1;
+sub is_const {
+    my $self = shift;
+    defined $self->{prefix}
+      ? ( $self->_stringify eq $self->{prefix} . '/' . $self->{device} )
+      : 1;
 }
 
 =method would_change
@@ -413,11 +394,10 @@ It does not change the current environment.
 
 =cut
 
-sub would_change
-{
-  my $self = shift;
+sub would_change {
+    my $self = shift;
 
-  return defined $self->{last} ? $self->_stringify ne $self->{last} : 1;
+    return defined $self->{last} ? $self->_stringify ne $self->{last} : 1;
 }
 
 =method is_interactive
@@ -428,11 +408,10 @@ This method returns true if the device is an interactive device.
 
 =cut
 
-sub is_interactive
-{
-  my $self = shift;
+sub is_interactive {
+    my $self = shift;
 
-  $self->{devinfo}{inter};
+    $self->{devinfo}{inter};
 }
 
 =method is_ephemeral
@@ -444,30 +423,26 @@ device is closed (e.g., the C</xw> device ).
 
 =cut
 
-sub is_ephemeral
-{
-  my $self = shift;
-  $self->{device} =~ /$ephemeral/;
+sub is_ephemeral {
+    my $self = shift;
+    $self->{device} =~ /$ephemeral/;
 }
 
 
-sub _stringify
-{
-  my $self = shift;
+sub _stringify {
+    my $self = shift;
 
-  # handle interpolated values
-  my $prefix = defined $self->{prefix} ? $self->{prefix} : '';
+    # handle interpolated values
+    my $prefix = defined $self->{prefix} ? $self->{prefix} : '';
 
-  # get calling package
+    # get calling package
 
-  my ( $fmt, $val );
+    my ( $fmt, $val );
 
-  ## no critic ( ProhibitNoStrict );
-  no strict 'refs';
-  my $pkg = (caller(1))[0];
-  1 while
-    $prefix =~
-      s/ \$\{ (\w+) (?::([^\}]+))? } /
+    ## no critic ( ProhibitNoStrict );
+    no strict 'refs';
+    my $pkg = ( caller( 1 ) )[0];
+    1 while $prefix =~ s/ \$\{ (\w+) (?::([^\}]+))? } /
         $fmt = defined $2 ? $2 : '%s';
 
         $val =
@@ -491,7 +466,7 @@ sub _stringify
         sprintf( $fmt, $val ) if defined $val;
   /ex;
 
-  $prefix . '/' . $self->{device};
+    $prefix . '/' . $self->{device};
 }
 
 1;
