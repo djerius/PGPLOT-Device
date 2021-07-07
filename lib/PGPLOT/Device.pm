@@ -17,6 +17,10 @@ our $NDevices;
 our %PGDevice;
 our %DevMap;
 
+sub _croak {
+    require Carp;
+    goto \&Carp::croak;
+}
 
 =method new
 
@@ -164,8 +168,7 @@ sub _initialize
 
   if ( exists $opts->{vars} )
   {
-      require Carp;
-      Carp::croak( "vars attribute must be a hash\n" )
+      _croak( "vars attribute must be a hash\n" )
           unless 'HASH' eq ref $opts->{vars};
 
     $self->{vars} = $opts->{vars};
@@ -273,8 +276,7 @@ sub _parse_spec
     # no pre-existing device.  make sure that the device is a real one
     else
     {
-        require Carp;
-        Carp::croak( "unknown PGPLOT device: $device\n" );
+        _croak( "unknown PGPLOT device: $device\n" );
     }
   }
 
@@ -312,8 +314,7 @@ sub _parse_spec
       # prefix.  better bail
       else
       {
-          require Carp;
-          Carp::croak( "error: interactive device with unparseable prefix: $spec\n" );
+          _croak( "error: interactive device with unparseable prefix: $spec\n" );
       }
     }
   }
