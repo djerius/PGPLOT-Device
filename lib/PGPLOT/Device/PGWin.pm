@@ -145,7 +145,7 @@ sub finish
   # make sure that the plot stays up until the user is done with it
   if ( defined $self->{win} )
   {
-    pgask(1) if $self->{device}->is_ephemeral;
+    PGPLOT::pgask(1) if $self->{device}->is_ephemeral;
     $self->{win}->close;
   }
 }
