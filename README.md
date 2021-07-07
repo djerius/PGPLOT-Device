@@ -4,7 +4,7 @@ PGPLOT::Device - autogenerate PGPLOT device names
 
 # VERSION
 
-version 0.10
+version 0.11
 
 # SYNOPSIS
 
