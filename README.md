@@ -318,21 +318,21 @@ specifies the device as `/xs`, in the second `+/xs` or `+1/xs`:
          $win->close;
         }
 
-# BUGS
+# SUPPORT
 
-Please report any bugs or feature requests on the bugtracker website
-[https://rt.cpan.org/Public/Dist/Display.html?Name=PGPLOT-Device](https://rt.cpan.org/Public/Dist/Display.html?Name=PGPLOT-Device) or by
-email to
-[bug-PGPLOT-Device@rt.cpan.org](mailto:bug-PGPLOT-Device@rt.cpan.org).
+## Bugs
 
-When submitting a bug or request, please include a test-file or a
-patch to an existing test-file that illustrates the bug or desired
-feature.
+Please report any bugs or feature requests to bug-pgplot-device@rt.cpan.org  or through the web interface at: https://rt.cpan.org/Public/Dist/Display.html?Name=PGPLOT-Device
 
-# SOURCE
+## Source
 
-The development version is on github at [https://github.com/djerius/pgplot-device](https://github.com/djerius/pgplot-device)
-and may be cloned from [git://github.com/djerius/pgplot-device.git](git://github.com/djerius/pgplot-device.git)
+Source is available at
+
+    https://gitlab.com/djerius/pgplot-device
+
+and may be cloned from
+
+    https://gitlab.com/djerius/pgplot-device.git
 
 # SEE ALSO
 
