@@ -21,6 +21,10 @@ version 0.10
 
 # DESCRIPTION
 
+**Note!**  It's much easier to use [PGPLOT::Device::PGWin](https://metacpan.org/pod/PGPLOT::Device::PGWin)
+instead of using PGPLOT::Device directly. It handles much of the
+complexity of dealing with interactive devices.
+
 It is sometimes surprisingly difficult to create an appropriate PGPLOT
 device.  Coding for both interactive and hardcopy devices can lead to
 code which repeatedly has to check the device type to generate the
