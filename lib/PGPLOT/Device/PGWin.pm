@@ -131,7 +131,7 @@ sub next {
       if $self->{not_first}++;
 
     if ( $self->{_would_change} || $self->{device}->would_change ) {
-        $self->{win}->close if defined $self->{win};
+        $self->finish;
         $self->{win} = PDL::Graphics::PGPLOT::Window->new( {
                 Device => $self->{device}->next,
                 %{ $self->{winopts} } } );
