@@ -5,6 +5,8 @@ package PGPLOT::Device::PGWin;
 use strict;
 use warnings;
 
+use v5.10;
+
 our @ISA = qw();
 
 our $VERSION = '0.12';
