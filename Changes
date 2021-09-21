@@ -2,12 +2,22 @@ Revision history for {{$dist->name}}
 
 {{$NEXT}}
 
+0.12      2021-09-21 09:02:17-04:00 America/New_York
+
   [ENHANCEMENT]
 
     * PGPLOT::Device::PGWin: allow lowercase hash keys in constructor
 
-    * PGPLOT::Device::PGWin: new method winopts to get/set window options. changes
-      will trigger closing/opening a new PDL::Graphics::PGPLOT::Window ojbect.
+    * PGPLOT::Device::PGWin::winopts
+
+        * new method to get window options.
+
+    * A new set of window options may now be passed to
+      PGPLOT::Device::PGWin::next.  If the device is not changing,
+      the current window object is poked at to handle changes to
+      the following options:
+
+        Justify NXPanels NYPanels
 
 
 0.11      2021-07-07 10:08:04-04:00 America/New_York
