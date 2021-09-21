@@ -28,7 +28,7 @@ Create a new object.  The possible options are:
 =item device
 
 The device specification.  This is passed directly to
-L<PGPLOT::Device/new>, so see it's documentation.
+L<PGPLOT::Device/new>, so see its documentation.
 
 =item devopts
 
@@ -59,7 +59,6 @@ sub new {
     $self->{not_first}     = 0;
     $self->{win}           = undef;
     $self->{winopts}       = { %{ $opt{winopts} } };
-    $self->{_would_change} = 0;
 
     bless $self, $class;
 
@@ -68,34 +67,63 @@ sub new {
 
 =method winopts
 
-  # retrieve a copy
+  # retrieve a copy of the current set of dinwo options.
   $winopts = $pgwin->winopts;
-
-  # update
-  $pgwin->winopts( \%winopts );
 
 =cut
 
 sub winopts {
+    return { %{ $_[0]->{winopts} } };
+}
 
-    if ( defined $_[1] ) {
-        my ( $self, $new ) = @_;
+sub _update_winopts {
+    my ( $self, $new ) = @_;
 
-        my $orig = $self->{winopts};
+    my $orig = $self->{winopts};
+    $self->{winopts} = { %{$new} };
 
-        unless (
-            List::Util::all {
-                ( exists $new->{$_} && exists $orig->{$_} )
-                  && ( ( !defined $new->{$_} && !defined $orig->{$_} )
-                    || ( $new->{$_} eq $orig->{$_} ) )
-            }
-            List::Util::uniq( keys %$new, keys %$orig ) )
-        {
-            $self->{winopts}       = { %{$new} };
-            $self->{_would_change} = 1;
+    # keys of the elements that aren't the same between the
+    # new and old winopts.
+    my %lc_orig = map { lc $_ => $orig->{$_} } keys %$orig;
+    my %lc_new  = map { lc $_ => $new->{$_} } keys %$new;
+
+    my @diffs = grep {
+        !(
+            ( exists $lc_new{$_} && exists $lc_orig{$_} )
+            && (   ( !defined $lc_new{$_} && !defined $lc_orig{$_} )
+                || ( $lc_new{$_} eq $lc_orig{$_} ) ) )
+    } List::Util::uniq( keys %lc_new, keys %lc_orig );
+
+
+    return unless @diffs && defined $self->{win};
+    my $win = $self->{win};
+
+    my %diffs;
+    @diffs{@diffs} = ();
+
+    if ( exists $diffs{justify} ) {
+        for my $options ( 'PlotOptions', 'Options' ) {
+            my $defaults = $win->{$options}->defaults;
+            $defaults->{Justify} = $lc_new{justify};
+            $win->{$options}->defaults( $defaults );
         }
     }
-    return { %{ $_[0]->{winopts} } };
+
+    # try to do something if just the number of panels are being changed
+    if ( exists $diffs{nxpanel} || exists $diffs{nypanel} ) {
+        my ( $NX, $NY )
+          = ( $lc_new{nxpanel} // 1, $lc_new{nypanel} // 1 );
+
+        # don't look!  PDL::Graphics::PGPLOT::Window doesn't understand
+        # how to change the number of panels while a device is open,
+        # so need to do it manually and then poke at the object's innards
+        # so that it will know the new panel grid and clear the device
+        # in advance of the next plot
+        PGPLOT::pgsubp( $NX, $NY );
+        $win->{NX}           = $NX;
+        $win->{NY}           = $NY;
+        $win->{CurrentPanel} = $NX * $NY;
+    }
 }
 
 =method device
@@ -110,20 +138,42 @@ sub device { $_[0]->{device} }
 
 =method next
 
-  $win = $pgwin->next(  );
-  $win = $pgwin->next( $override );
+  $win = $pgwin->next( ?\%winopts, ?$spec  );
 
-This method returns the window handle to use for constructing the next
-plot.  If the optional argument is specified, it is equivalent to the
-following call sequence:
+Return the window handle to use for constructing the next plot.  If the device
+is not changing, simply returns the existing window handle.
 
-  $pgwin->override( $override );
+=over
+
+=item C<%winopts>
+
+If C<%winopts> is provided, it will be used to replace the previous
+set of window options. To merely amend that, set
+
+  %winopts = ( %{ $pgwin->winopts }, %newoptions );
+
+If the device is not changing, some poking at
+PDL::Graphics::PGPLOT::Window innards must be performed so that the
+current window will pay attention to the new options.  Only the
+following options are handled:
+
+  Justify NXPanel NYPanel
+
+=item C<$spec>
+
+If the optional argument C<$spec> is provided, it is
+equivalent to
+
+  $pgwin->override( $spec );
   $pgwin->next;
+
+=back
 
 =cut
 
 sub next {
     my $self = shift;
+    my $winopts = 'HASH' eq ref $_[0] ? shift : undef;
 
     $self->override( @_ ) if @_;
 
@@ -132,12 +182,15 @@ sub next {
     PGPLOT::pgask( $self->{device}->ask )
       if $self->{not_first}++;
 
-    if ( $self->{_would_change} || $self->{device}->would_change ) {
+    if ( $self->{device}->would_change ) {
         $self->finish;
+        $self->{winopts} = { %$winopts } if defined $winopts;
         $self->{win} = PDL::Graphics::PGPLOT::Window->new( {
                 Device => $self->{device}->next,
                 %{ $self->{winopts} } } );
-        $self->{_would_change} = 0;
+    }
+    else {
+        $self->_update_winopts( $winopts ) if defined $winopts;
     }
 
     $self->{win};
@@ -147,7 +200,7 @@ sub next {
 
   $pgwin->override( ... );
 
-This is calls the B<override> method of the associated
+This calls the B<override> method of the associated
 L<PGPLOT::Device> object.
 
 =cut
