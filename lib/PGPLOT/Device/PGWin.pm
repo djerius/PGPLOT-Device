@@ -9,7 +9,7 @@ use v5.10;
 
 our @ISA = qw();
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 use List::Util 1.33;
 
